@@ -8,3 +8,5 @@ fraud detection dataset/
 *.csv
 *.log
 *.tmp
+*.parquet
+*.joblib
