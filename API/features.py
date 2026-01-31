@@ -1,26 +1,27 @@
 import pandas as pd
 import numpy as np
 import joblib
+import os
 
-# 1. Load your new comprehensive metadata
-METADATA = joblib.load(r"C:\Users\user\ml projects\fraud detection project\notebooks\lgb_feature_metadata.joblib")
+
+BASE_PATH = r"C:\Users\ADMIN\ml projects\fraud detection project\API"
+
+METADATA = joblib.load(os.path.join(BASE_PATH, "lgb_feature_metadata_v3.joblib"))
 FEATURE_COLUMNS = METADATA["feature_names"]
 CATEGORICAL_FEATURES = METADATA["categorical_features"]
 CATEGORICAL_MAPPINGS = METADATA["categorical_mappings"]
 
-# Load other artifacts
-MEDIANS = joblib.load("training_medians.joblib")
-CARD1_AMT_MEANS = joblib.load("card1_amt_means.joblib")
-UID_AMT_MEANS = joblib.load("uid_amt_means.joblib")
-UID_D1_MEANS = joblib.load("uid_d1_means.joblib")
-UID_D15_MEANS = joblib.load("uid_d15_means.joblib")
-C_FEATS_MEANS = joblib.load("c_feats_card1_means.joblib")
-CARD1_ADDR_NUNIQUE = joblib.load("card1_addr_nunique.joblib")
+MEDIANS = joblib.load(os.path.join(BASE_PATH, "training_medians.joblib"))
+CARD1_AMT_MEANS = joblib.load(os.path.join(BASE_PATH, "card1_amt_means.joblib"))
+UID_AMT_MEANS = joblib.load(os.path.join(BASE_PATH, "uid_amt_means.joblib"))
+UID_D1_MEANS = joblib.load(os.path.join(BASE_PATH, "uid_d1_means.joblib"))
+UID_D15_MEANS = joblib.load(os.path.join(BASE_PATH, "uid_d15_means.joblib"))
+C_FEATS_MEANS = joblib.load(os.path.join(BASE_PATH, "c_feats_card1_means.joblib"))
+CARD1_ADDR_NUNIQUE = joblib.load(os.path.join(BASE_PATH, "card1_addr_nunique.joblib"))
 
 def preprocess_transaction(raw_df: pd.DataFrame) -> pd.DataFrame:
     df = raw_df.copy()
 
-    # --- Behavioral Feature Engineering (same as yours) ---
     card1 = df["card1"].iloc[0]
     addr1 = df["addr1"].iloc[0] if "addr1" in df.columns else np.nan
     uid = (card1, addr1)
@@ -32,6 +33,10 @@ def preprocess_transaction(raw_df: pd.DataFrame) -> pd.DataFrame:
     df["card1_addr1_count"] = CARD1_ADDR_NUNIQUE.get(card1, 1)
     df["uid_D1_mean"] = UID_D1_MEANS.get(uid, np.nan)
     df["uid_D15_mean"] = UID_D15_MEANS.get(uid, np.nan)
+
+    df['C1_per_Amt'] = df['C1'] / (df['TransactionAmt'] + 1)
+    df['is_new_user'] = (df['C13'] <= 1).astype(int)
+
 
     # --- Ensure all categorical columns exist ---
     for col in CATEGORICAL_FEATURES:
@@ -59,5 +64,5 @@ def preprocess_transaction(raw_df: pd.DataFrame) -> pd.DataFrame:
     # Ensure numeric types
     num_cols = df.select_dtypes(include=['number']).columns
     df[num_cols] = df[num_cols].astype('float32')
-
+    
     return df
